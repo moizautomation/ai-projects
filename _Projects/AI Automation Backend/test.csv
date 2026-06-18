@@ -1,11 +1,9 @@
-name,age,city,salary,department
-John Smith,28,New York,55000,Marketing
-Sara Ahmed,34,London,72000,Engineering
-Ali Hassan,25,Karachi,38000,Sales
-Emily Clark,41,Toronto,91000,Management
-Ravi Patel,30,Mumbai,47000,Engineering
-Maria Garcia,27,Madrid,63000,Design
-Omar Sheikh,38,Dubai,84000,Finance
-Lisa Wong,22,Singapore,41000,Sales
-James Brown,45,Sydney,98000,Management
-Zara Khan,29,Islamabad,52000,Marketing
+Alice,25,50000,HR
+Bob,30,60000,Engineering
+Charlie,,70000,Engineering
+David,28,,HR
+Eva,35,90000,Finance
+Frank,30,60000,Engineering
+Grace,,80000,Finance
+Henry,40,100000,HR
+Henry,40,100000,HR
