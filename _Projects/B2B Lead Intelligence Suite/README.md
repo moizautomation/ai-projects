@@ -6,7 +6,7 @@ Paste a list of URLs. Get instant business intelligence on every company — rea
 [Try it live](https://ai-business-suite.streamlit.app)
 
 ## 📸 Screenshot
-![Lead Intelligence Output](leadintel_screenshot.png)
+![Lead Intelligence Output](leadintel.png)
 
 ## 📌 What It Does
 
