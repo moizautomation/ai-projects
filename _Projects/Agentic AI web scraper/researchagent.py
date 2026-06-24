@@ -19,8 +19,14 @@ search = DuckDuckGoSearchRun()
 
 @tool
 def web_search(query: str) -> str:
-    """Perform a web search for the given query"""
-    return search.run(query)
+    """Use this first when researching a topic. Performs a web search and 
+    Returns websites and information related to the topic."""
+
+    result = search.run(query)
+    if result is None or len(result.strip()) == 0:
+        return ("No Search Result Found.")
+    
+    return result
 
 @tool
 def web_scraper(url: str) -> str:
@@ -47,15 +53,78 @@ def web_scraper(url: str) -> str:
     else:
         return "Invalid URL Provided"
 
-    return cleaned
+    if len(cleaned) == 0:
+        return ("No headings or paragraphs found on page.")
+    
+    return cleaned[:3000]
+
+@tool
+def summarizer(clean: str) -> str:
+    """Use this after scraping a webpage.
+    Input should be webpage content.
+    Output is a concise summary."""
+
+    if clean is None  or len(clean.strip()) == 0:
+        return ("No content available to summarize.")
+    
+    prompt = ChatPromptTemplate.from_template("""
+    Summarize the following data while keeping the facts intact:
+    {clean}
+""")
+    
+
+    chain = prompt | model
+    
+    summary = chain.invoke({"clean" : clean})
+
+    return summary.content
+
+@tool
+def report_generator(findings: str) -> str:
+    """Use this after summarization.
+    Input should be research findings or summaries.
+    Output should be a structured report containing:
+    Title
+    Overview
+    Key Findings
+    Conclusion"""
+
+    if findings is None or len(findings.strip()) == 0:
+        return("No findings available for report generation.")
+    
+    prompt = ChatPromptTemplate.from_template("""
+    Generate a report of the findings: {findings}
+    follow the following format:
+    Title
+    Overview
+    Key Findings
+    Conclusion
+""")
+
+    chain = prompt | model
+
+    report = chain.invoke(
+        {
+            "findings" : findings
+        }
+        )
+
+    return report.content
+    
 
 
-tools = [web_search, web_scraper]
 
+tools = [web_search, web_scraper,summarizer,report_generator]
 
 # Pull the standard ReAct prompt — has all required placeholders
 prompt = ChatPromptTemplate.from_template("""
 Answer the following question as best you can.
+If the user asks for research,
+first search,
+then scrape,
+then summarize,
+then generate a report.
+                                          
 Here is the previous conversation history:
 {history}
 You have access to the following tools:
@@ -83,6 +152,7 @@ Final Answer: the final answer to the original question
 Question: {input}
 
 Thought: {agent_scratchpad}
+                                          
 """)
 
 
@@ -102,8 +172,6 @@ agent_executor = AgentExecutor(
 for i in range (0,5):
     query = input("Enter your prompt here: ")
 
-    memory.add_user_message(query)
-
     history = ""
     for msg in memory.messages:
         # msg.type returns 'human' or 'ai'
@@ -117,6 +185,7 @@ for i in range (0,5):
         }
     )
 
+    memory.add_user_message(query)
     memory.add_ai_message(response["output"])
 
 
