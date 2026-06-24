@@ -28,7 +28,7 @@ def web_scraper(url: str) -> str:
 
     if url.startswith("http://") or url.startswith("https://"):
         try:
-            r = requests.get(url)
+            r = requests.get(url, timeout=10)
 
             if r.status_code != 200:
                 return f"Website {url} cannot be reached Error: {r.status_code}"
