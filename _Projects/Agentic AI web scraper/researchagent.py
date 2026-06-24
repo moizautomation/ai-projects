@@ -2,13 +2,15 @@ from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_classic.agents import AgentExecutor, create_react_agent
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.chat_history import InMemoryChatMessageHistory
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 load_dotenv()
 
+memory = InMemoryChatMessageHistory()
 
 model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
@@ -54,7 +56,8 @@ tools = [web_search, web_scraper]
 # Pull the standard ReAct prompt — has all required placeholders
 prompt = ChatPromptTemplate.from_template("""
 Answer the following question as best you can.
-
+Here is the previous conversation history:
+{history}
 You have access to the following tools:
 
 {tools}
@@ -96,8 +99,25 @@ agent_executor = AgentExecutor(
     handle_parsing_errors=True
 )
 
-query = input("Enter your prompt here: ")
+for i in range (0,5):
+    query = input("Enter your prompt here: ")
 
-response = agent_executor.invoke({"input": query})
+    memory.add_user_message(query)
 
-print("\nFinal Answer:\n", response["output"])
+    history = ""
+    for msg in memory.messages:
+        # msg.type returns 'human' or 'ai'
+        speaker = "Human" if msg.type == "human" else "AI"
+        history += f"{speaker}: {msg.content}\n"
+
+    response = agent_executor.invoke(
+        {
+            "history" : history,
+            "input": query
+        }
+    )
+
+    memory.add_ai_message(response["output"])
+
+
+    print("\nFinal Answer:\n", response["output"])
