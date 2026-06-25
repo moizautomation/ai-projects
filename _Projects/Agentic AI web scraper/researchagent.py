@@ -4,13 +4,17 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.callbacks import BaseCallbackHandler
 import requests
+import streamlit as st
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
 memory = InMemoryChatMessageHistory()
+agent_steps = []
 
 model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
@@ -113,6 +117,24 @@ def report_generator(findings: str) -> str:
     
 
 
+st.title("Multi-Step Research Agent")
+st.divider()
+
+class ToolTracker(BaseCallbackHandler):
+
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        agent_steps.append(
+            {
+                "tool": serialized["name"],
+                "input": input_str,
+                "output": None
+            }
+        )
+
+    def on_tool_end(self, output, **kwargs):
+        if len(agent_steps) > 0:
+            agent_steps[-1]["output"] = output
+
 
 tools = [web_search, web_scraper,summarizer,report_generator]
 
@@ -120,7 +142,7 @@ tools = [web_search, web_scraper,summarizer,report_generator]
 prompt = ChatPromptTemplate.from_template("""
 Answer the following question as best you can.
 If the user asks for research,
-first search,
+first search for the topic maximum of 2 times,
 then scrape,
 then summarize,
 then generate a report.
@@ -162,31 +184,66 @@ agent = create_react_agent(
     prompt
 )
 
+tracker = ToolTracker()
+
 agent_executor = AgentExecutor(
     agent=agent,
-    tools=tools, 
+    tools=tools,
     verbose=True,
-    handle_parsing_errors=True
+    handle_parsing_errors=True,
+    callbacks=[tracker]
 )
 
-for i in range (0,5):
-    query = input("Enter your prompt here: ")
 
-    history = ""
-    for msg in memory.messages:
-        # msg.type returns 'human' or 'ai'
-        speaker = "Human" if msg.type == "human" else "AI"
-        history += f"{speaker}: {msg.content}\n"
+query = st.text_area("Enter your research query: ")
 
-    response = agent_executor.invoke(
-        {
-            "history" : history,
-            "input": query
-        }
-    )
+button = st.button("Run Agent")
 
-    memory.add_user_message(query)
-    memory.add_ai_message(response["output"])
+if len(memory.messages) > 0:
+    with st.expander("Conversation History"):
+        for msg in memory.messages:
+            speaker = "Human" if msg.type == "human" else "AI"
+            st.write(f"**{speaker}:** {msg.content}")
 
+left_col, right_col = st.columns([1, 2])
+st.divider()
 
-    print("\nFinal Answer:\n", response["output"])
+if button:
+    if query is None or len(query.strip()) == 0:
+        st.error("Please Enter a Query")
+        st.stop()
+
+    agent_steps.clear()
+
+    with st.spinner("Agent is Researching..."):
+        history = ""
+        for msg in memory.messages:
+            # msg.type returns 'human' or 'ai'
+            speaker = "Human" if msg.type == "human" else "AI"
+            history += f"{speaker}: {msg.content}\n"
+
+        response = agent_executor.invoke(
+            {
+                "history" : history,
+                "input": query
+            }
+        )
+
+        memory.add_user_message(query)
+        memory.add_ai_message(response["output"])
+
+    with left_col:
+        st.subheader("Agent Reasoning")
+
+        for i, step in enumerate(agent_steps, start=1):
+            with st.expander(f"Step {i} - {step['tool']}"):
+
+                st.write("Input:")
+                st.code(step["input"])
+
+                st.write("Output:")
+                st.code(str(step["output"]))
+
+    with right_col:
+        st.subheader("Final Answer")
+        st.markdown(response["output"])
