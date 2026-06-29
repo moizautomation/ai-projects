@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph,END
 from typing import TypedDict
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.messages import HumanMessage,AIMessage
+from langchain_core.messages import HumanMessage,AIMessage,SystemMessage,ToolMessage
 from langgraph.graph.message import add_messages
 from typing import Annotated
 from langgraph.prebuilt import ToolNode
@@ -17,12 +17,44 @@ from dotenv import load_dotenv
 load_dotenv()
 
 model_flash1 = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash"
+    model="gemini-2.5-flash"
 )
 
 model_flash2 = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash"
+    model="gemini-2.5-pro"
 )
+
+SYSTEM_INSTRUCTIONS = """
+You are an AI Research Agent.
+
+Your only responsibility is to collect accurate research.
+
+You have access to two tools:
+
+1. web_search(query)
+   - Use this to search for companies, topics, or websites.
+
+2. web_scraper(url)
+   - Use this after you have a website URL and need detailed information.
+
+Rules:
+
+- Never make up facts.
+- Never hallucinate.
+- Never answer from memory if a tool can provide the information.
+- If more information is required, call the appropriate tool.
+- You may call multiple tools if necessary.
+- Continue using tools until you have enough information.
+- Once enough information has been collected, stop calling tools.
+
+Important:
+
+- Do NOT summarize the research.
+- Do NOT generate outreach ideas.
+- Those are handled by later nodes.
+
+Your job ends once all required research has been collected.
+"""
 
 search = DuckDuckGoSearchRun()
 
@@ -75,7 +107,16 @@ def web_scraper(url: str) -> str:
 
 def summarizer(clean: str) -> str:
     prompt = ChatPromptTemplate.from_template("""
-Summarize the following research:
+You are an expert research analyst.
+
+Summarize the following research into:
+
+- Company / Topic Overview
+- Main Products or Services
+- Important Technologies
+- Interesting Facts
+
+Research:
 
 {data}
 """)
@@ -93,9 +134,20 @@ Summarize the following research:
 
 def outreach_generator(findings: str) -> str:
     prompt = ChatPromptTemplate.from_template("""
-Generate 3 outreach angles for the following company research.
+You are a sales strategist.
 
-Research:
+Based on this research generate exactly three outreach ideas.
+
+For each one provide:
+
+Title
+
+Explanation
+
+Why it may work
+
+Research
+
 {research}
 """)
 
@@ -110,25 +162,65 @@ Research:
     return response.content
 
 def summary(state):
-    message = state["messages"][-1].content
+    research = []
 
-    response = summarizer(clean=message)
+    for msg in state["messages"]:
+
+        if isinstance(msg, ToolMessage):
+
+            if msg.content.strip():
+                
+                research.append(msg.content)
+
+    combined_research = "\n\n".join(research)
+
+    response = summarizer(clean=combined_research)
+
+    if "Invalid URL" in response:
+        return {
+            "messages":[AIMessage(content="Unable to scrape website.")]
+        }
 
     return {
-        "messages" : [AIMessage(content=response)]
+        "messages": [AIMessage(content=response)]
     }
 
 def outreach(state):
-    message = state["messages"][-1].content
 
-    response = outreach_generator(findings=message)
+    summary = state["messages"][-1].content
+
+    response = outreach_generator(findings=summary)
+
+    final_report = f"""
+==============================
+AI RESEARCH REPORT
+==============================
+
+Research Summary
+
+{summary}
+
+==============================
+
+Outreach Angle Suggestions
+
+{response}
+
+==============================
+"""
 
     return {
-        "messages" : [AIMessage(content=response)]
+        "messages":[AIMessage(content=final_report)]
     }
 
 def chatbot(state):
-    response = model_flash1_with_tools.invoke(state["messages"])
+    messages = [
+    SystemMessage(content=SYSTEM_INSTRUCTIONS),
+    # it means instead of creating a nested list insert all elements from below list in this list
+    *state["messages"]
+]
+
+    response = model_flash1_with_tools.invoke(messages)
 
     return {
         "messages" : [response]
@@ -150,6 +242,21 @@ tools_node = ToolNode(tools)
 
 model_flash1_with_tools = model_flash1.bind_tools(tools)
 
+# Graph Flow
+#
+# User
+#   ↓
+# Chatbot
+#   ↓
+# ToolNode (Search / Scrape)
+#   ↓
+# Chatbot
+#   ↓
+# Summary
+#   ↓
+# Outreach
+#   ↓
+# Final Report
 graph = StateGraph(State)
 
 graph.add_node("chatbot",chatbot)
@@ -173,11 +280,33 @@ graph.add_edge("tool_node","chatbot")
 graph.add_edge("summarizer_node","outreach_node")
 graph.add_edge("outreach_node",END)
 
-app = graph.compile()
+app = graph.compile(
+    checkpointer=memory
+)
+
+config = {
+    "configurable": {
+        "thread_id": "2"
+    }
+}
+
+# for event in app.stream(
+#     {
+#         "messages":[
+#             HumanMessage(content="Research Python")
+#         ]
+#     },
+#     config=config
+# ):
+#     print(event)
+
+question = input("Enter your Prompt: ")
 
 result = app.invoke(
     {
-        "messages" : [HumanMessage(content="Research Python.")]
-    }
+        "messages" : [HumanMessage(content=question)]
+    },
+    config = config
 )
+print(result["messages"][-1].content)
    
