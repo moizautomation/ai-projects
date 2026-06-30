@@ -1,0 +1,9 @@
+langchain
+langchain-core
+langchain-google-genai
+langchain-community
+streamlit
+duckduckgo-search
+requests
+beautifulsoup4
+python-dotenv
