@@ -10,19 +10,17 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun
 import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from bs4 import BeautifulSoup
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-model_flash1 = ChatGoogleGenerativeAI(
+model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash"
 )
 
-model_flash2 = ChatGoogleGenerativeAI(
-    model="gemini-2.5-pro"
-)
 
 SYSTEM_INSTRUCTIONS = """
 You are an AI Research Agent.
@@ -32,9 +30,11 @@ Your only responsibility is to collect accurate research.
 You have access to two tools:
 
 1. web_search(query)
+   - Do web_search maximum of 2 times
    - Use this to search for companies, topics, or websites.
 
 2. web_scraper(url)
+   - Scrape website maximum of 1 time
    - Use this after you have a website URL and need detailed information.
 
 Rules:
@@ -51,6 +51,7 @@ Important:
 
 - Do NOT summarize the research.
 - Do NOT generate outreach ideas.
+- do not invent statistics or cite studies that are not verified in the research provided
 - Those are handled by later nodes.
 
 Your job ends once all required research has been collected.
@@ -121,7 +122,7 @@ Research:
 {data}
 """)
 
-    chain = prompt | model_flash1
+    chain = prompt | model
 
     response = chain.invoke(
         {
@@ -151,7 +152,7 @@ Research
 {research}
 """)
 
-    chain = prompt | model_flash2
+    chain = prompt | model
 
     response = chain.invoke(
         {
@@ -220,7 +221,7 @@ def chatbot(state):
     *state["messages"]
 ]
 
-    response = model_flash1_with_tools.invoke(messages)
+    response = model_with_tools.invoke(messages)
 
     return {
         "messages" : [response]
@@ -233,14 +234,14 @@ def should_continue(state):
     if last_message.tool_calls:
         return "tools_node"
     
-    return END
+    return "summarize"
 
 tools = [web_search,web_scraper]
 
 
 tools_node = ToolNode(tools)
 
-model_flash1_with_tools = model_flash1.bind_tools(tools)
+model_with_tools = model.bind_tools(tools)
 
 # Graph Flow
 #
@@ -272,7 +273,7 @@ graph.add_conditional_edges(
      should_continue,
      {
         "tools_node" : "tool_node",
-        END: "summarizer_node"
+        "summarize": "summarizer_node"
      }
 )    
 
@@ -290,15 +291,6 @@ config = {
     }
 }
 
-# for event in app.stream(
-#     {
-#         "messages":[
-#             HumanMessage(content="Research Python")
-#         ]
-#     },
-#     config=config
-# ):
-#     print(event)
 
 question = input("Enter your Prompt: ")
 
@@ -308,5 +300,6 @@ result = app.invoke(
     },
     config = config
 )
+
 print(result["messages"][-1].content)
    
