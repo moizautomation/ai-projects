@@ -5,6 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -89,10 +90,11 @@ with st.spinner("Readin the PDF"):
     # if the variable is not made
     if "vector" not in st.session_state:
 
-        splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 1000,
-
-        chunk_overlap = 200    
+        # will split only when a change in topic above a 
+        # threshold is detected
+        splitter = SemanticChunker(
+        embeddings,
+        breakpoint_threshold_type="percentile"   
         )
 
         chunks = splitter.split_documents(documents)
