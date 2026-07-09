@@ -6,7 +6,6 @@
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.prompts import ChatPromptTemplate
@@ -41,12 +40,9 @@ model = ChatGoogleGenerativeAI(
 )
 
 # Local embedding model used for semantic chunking + FAISS
-embeddings = HuggingFaceEmbeddings(
-    model_name="all-MiniLM-L6-v2"
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001"
 )
-# embeddings = GoogleGenerativeAIEmbeddings(
-#     model="models/gemini-embedding-001"
-# )
 
 # Cross-encoder that scores (question, chunk) pairs for re-ranking
 cross_encoder = HuggingFaceCrossEncoder(
