@@ -10,5 +10,5 @@ langchain-experimental
 faiss-cpu
 rank-bm25
 sentence-transformers
-duckduckgo-search
+ddgs
 pypdf
