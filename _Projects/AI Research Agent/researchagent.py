@@ -12,13 +12,49 @@ import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
 from bs4 import BeautifulSoup
 import os
+import time
+import uuid
+from collections import defaultdict
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Form, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash"
 )
+
+# FastAPI app (kept as "fastapi_app" since the compiled LangGraph below
+# is already called "app" in the original script — renaming that would
+# touch your working graph logic, so this is the one new name added)
+fastapi_app = FastAPI(title="AI RESEARCH AGENT")
+
+# Allow the Lovable frontend (different origin) to call this API.
+# Tighten allow_origins to your actual Lovable domain once you have it.
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Simple in-memory rate limiter: tracks request timestamps per IP.
+# Same approach used in the RAG agent (avoids slowapi dependency conflicts).
+request_log = defaultdict(list)
+
+def check_rate_limit(request, max_requests: int, window_seconds: int = 60):
+    """Raises 429 if this IP has exceeded max_requests in the window."""
+    ip = request.client.host
+    now = time.time()
+
+    request_log[ip] = [t for t in request_log[ip] if now - t < window_seconds]
+
+    if len(request_log[ip]) >= max_requests:
+        raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
+
+    request_log[ip].append(now)
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -284,21 +320,32 @@ app = graph.compile(
     checkpointer=memory
 )
 
-config = {
-    "configurable": {
-        "thread_id": "2"
+
+# API ENDPOINT
+# Replaces the input()/print() block at the bottom of the original script.
+# Each request gets its own thread_id so different visitors' conversations
+# don't get mixed into the same MemorySaver thread (the original script
+# hardcoded thread_id "2" for a single local user — a public API needs a
+# unique thread per session instead).
+@fastapi_app.post("/research")
+async def research(request: Request, question: str = Form(...)):
+
+    check_rate_limit(request, max_requests=10, window_seconds=60)
+
+    if not question:
+        raise HTTPException(status_code=400, detail="No question provided")
+
+    config = {
+        "configurable": {
+            "thread_id": str(uuid.uuid4())
+        }
     }
-}
 
+    result = app.invoke(
+        {
+            "messages": [HumanMessage(content=question)]
+        },
+        config=config
+    )
 
-question = input("Enter your Prompt: ")
-
-result = app.invoke(
-    {
-        "messages" : [HumanMessage(content=question)]
-    },
-    config = config
-)
-
-print(result["messages"][-1].content)
-   
+    return {"report": result["messages"][-1].content}
