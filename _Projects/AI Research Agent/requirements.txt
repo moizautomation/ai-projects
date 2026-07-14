@@ -3,7 +3,7 @@ langchain
 langchain-core
 langchain-google-genai
 langchain-community
-duckduckgo-search
+ddgs
 requests
 beautifulsoup4
 python-dotenv
