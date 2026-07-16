@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import os
 import time
 import uuid
+import groq
 from collections import defaultdict
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request
@@ -268,15 +269,27 @@ Outreach Angle Suggestions
 
 def chatbot(state):
     messages = [
-    SystemMessage(content=SYSTEM_INSTRUCTIONS),
-    # it means instead of creating a nested list insert all elements from below list in this list
-    *state["messages"]
-]
+        SystemMessage(content=SYSTEM_INSTRUCTIONS),
+        *state["messages"]
+    ]
 
-    response = model_with_tools.invoke(messages)
+    max_retries = 3
+    last_error = None
 
+    for attempt in range(max_retries):
+        try:
+            response = model_with_tools.invoke(messages)
+            return {
+                "messages": [response]
+            }
+        except groq.BadRequestError as e:
+            last_error = e
+            print(f"Tool call generation failed (attempt {attempt + 1}/{max_retries}): {e}")
+            time.sleep(1)
+
+    # All retries exhausted — fail gracefully instead of crashing the whole graph
     return {
-        "messages" : [response]
+        "messages": [AIMessage(content="Unable to complete research due to a repeated tool-calling error. Please try again.")]
     }
 
 def should_continue(state):
