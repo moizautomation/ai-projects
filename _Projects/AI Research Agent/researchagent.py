@@ -155,12 +155,19 @@ def summarizer(clean: str) -> str:
     prompt = ChatPromptTemplate.from_template("""
 You are an expert research analyst.
 
-Summarize the following research into:
+Before summarizing, check whether the research data below clearly and consistently refers to a single company or entity. If the data appears to mix multiple unrelated people, companies, or topics under a similar or generic name, do not merge them into one summary.
+
+If a single, confident match cannot be identified, respond with:
+"Insufficient information found to confidently identify and summarize this company."
+
+Otherwise, summarize the research into:
 
 - Company / Topic Overview
 - Main Products or Services
 - Important Technologies
 - Interesting Facts
+
+Only include facts that are clearly supported by the research data. Do not combine details from unrelated entities into a single summary.
 
 Research:
 
