@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 model = ChatGroq(
-    model="llama-3.1-8b-instant"
+    model="llama-3.3-70b-versatile"
 )
 
 # FastAPI app (kept as "fastapi_app" since the compiled LangGraph below
