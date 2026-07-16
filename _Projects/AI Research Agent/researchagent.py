@@ -88,6 +88,16 @@ Important:
 - Do NOT generate outreach ideas.
 - do not invent statistics or cite studies that are not verified in the research provided
 - Those are handled by later nodes.
+- When search results do not clearly and 
+specifically match the named company or entity 
+(e.g. the name is too generic, or results point to multiple unrelated entities), 
+do not combine or synthesize across them as if they describe one target.
+- If you cannot find a confident, specific match for the named company, 
+explicitly state that no reliable match was found rather than presenting the closest 
+available or most common result as if it were accurate.
+- Prioritize specificity and source relevance over completeness. 
+A shorter, honest "insufficient information" result is better than a broader 
+but potentially incorrect one.
 
 Your job ends once all required research has been collected.
 """
