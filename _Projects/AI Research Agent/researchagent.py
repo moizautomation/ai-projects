@@ -22,8 +22,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
+# model = ChatGroq(
+#     model="llama-3.3-70b-versatile"
+# )
+
 model = ChatGroq(
-    model="llama-3.3-70b-versatile"
+    model="openai/gpt-oss-20b"
 )
 
 # FastAPI app (kept as "fastapi_app" since the compiled LangGraph below
