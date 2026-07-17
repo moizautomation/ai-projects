@@ -3,6 +3,7 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 langchain-google-genai
+langchain-groq
 langchain-community
 langchain-core
 langchain-classic

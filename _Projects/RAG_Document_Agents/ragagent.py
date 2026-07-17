@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import time
 from collections import defaultdict
 from fastapi import Request
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_experimental.text_splitter import SemanticChunker
@@ -47,8 +47,8 @@ app.add_middleware(
 # MODELS (LLM, embeddings, cross-encoder)
 
 # Primary LLM used for answering and the rewrite step
-model = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash"
+model = ChatGroq(
+    model="llama-3.3-70b-versatile"
 )
 
 # Local embedding model used for semantic chunking + FAISS
