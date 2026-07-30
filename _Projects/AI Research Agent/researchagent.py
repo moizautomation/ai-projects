@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 import os
 import time
 import uuid
-import groq
 from collections import defaultdict
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request
@@ -285,7 +284,7 @@ def chatbot(state):
             return {
                 "messages": [response]
             }
-        except groq.BadRequestError as e:
+        except Exception as e:
             last_error = e
             print(f"Tool call generation failed (attempt {attempt + 1}/{max_retries}): {e}")
             time.sleep(1)
