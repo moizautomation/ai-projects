@@ -9,7 +9,7 @@ from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun
 import requests
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from bs4 import BeautifulSoup
 import os
 import time
@@ -22,8 +22,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-model = ChatGroq(
-    model="openai/gpt-oss-120b",
+model = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
     temperature=0
 )
 
