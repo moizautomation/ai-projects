@@ -276,7 +276,7 @@ def chatbot(state):
         *state["messages"]
     ]
 
-    max_retries = 3
+    max_retries = 5
     last_error = None
 
     for attempt in range(max_retries):
