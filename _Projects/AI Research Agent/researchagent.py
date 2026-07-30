@@ -23,7 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 model = ChatGroq(
-    model="llama-3.3-70b-versatile"
+    model="llama-3.3-70b-versatile",
+    temperature=0
 )
 
 
